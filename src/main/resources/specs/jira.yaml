@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: The Jira Cloud platform REST API
+  version: 1001.0.0-SNAPSHOT
+# servers:
+#   - url: "http://localhost:9191/tickets"
+paths:
+  /tickets:
+    post:
+      summary: Create issue
+      operationId: createIssue
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIssueDetails'
+        required: true
+      responses:
+        "200":
+          description: all good
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+  /tickets/{id}:
+    get:
+      operationId: getIssue
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: all good
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+components:
+  schemas:
+    Issue:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        minutesAfterCreation:
+          type: number
+          readOnly: true
+      additionalProperties: false
+    CreateIssueDetails:
+      type: string
