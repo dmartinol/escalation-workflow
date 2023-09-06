@@ -1,4 +1,5 @@
-# An escalation workflow integrated with 
+# Simple escalation workflow
+An escalation workflow integrated with [fake-jira-server](https://github.com/dmartinol/fake-jira-server) using [SonataFlow](https://sonataflow.org/serverlessworkflow/latest/index.html).
 
 ## Hardcoded settings
 Polling periodicity and escalation timeout are hardcoded in [ticketEscalation.sw.yaml](./src/main/resources/ticketEscalation.sw.yaml):
