@@ -9,9 +9,6 @@ timeouts:
 start: CreateJiraIssue
 # dataInputSchema: ocpob-schema.json
 functions:
-  - name: stopTimer 
-    type: custom 
-    operation: service:java:com.redhat.appeng.escalation.TimerService::stopTimer
   - name: sendEmail 
     type: custom 
     operation: service:java:com.redhat.appeng.escalation.EmailService::sendEmail
