@@ -10,6 +10,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+/**
+ * @deprecated Using jq expression instead
+ */
+@Deprecated
 @ApplicationScoped
 public class TimerService {
     private final static Logger logger = LoggerFactory.getLogger(TimerService.class);

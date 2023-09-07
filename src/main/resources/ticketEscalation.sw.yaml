@@ -9,12 +9,6 @@ timeouts:
 start: CreateJiraIssue
 # dataInputSchema: ocpob-schema.json
 functions:
-  - name: initTimer 
-    type: custom 
-    operation: service:java:com.redhat.appeng.escalation.TimerService::initTimer
-  - name: updateTimer 
-    type: custom 
-    operation: service:java:com.redhat.appeng.escalation.TimerService::updateTimer
   - name: stopTimer 
     type: custom 
     operation: service:java:com.redhat.appeng.escalation.TimerService::stopTimer
@@ -25,8 +19,6 @@ functions:
     operation: specs/jira.yaml#getIssue
   - name: createJiraIssue
     operation: specs/jira.yaml#createIssue
-  # - name: createK8sNamespace
-  #   operation: specs/kube.yaml#createCoreV1Namespace
   - name: logInfo
     type: custom
     operation: "sysout:INFO"
@@ -41,12 +33,8 @@ states:
             title: '"Request For New Namespace: " + .namespace'
         actionDataFilter:
           toStateData: .ticket
-    transition: InitTimer
-  - name: InitTimer
-    type: operation
-    actions:
-      - functionRef:
-          refName: initTimer
+    stateDataFilter:
+      output: ". += { timer: { triggered: false, startTime: now(), elapsedSeconds: 0 }}"
     transition: GetJiraIssue
   - name: GetJiraIssue
     type: operation
@@ -73,13 +61,9 @@ states:
           refName: "logInfo"
           arguments:
             message: "\"GetJiraIssueResult is \\(.)\""
-    transition: UpdateTimer
-  - name: UpdateTimer
-    type: operation
-    actions:
-      - functionRef:
-          refName: updateTimer
     transition: TicketDone
+    stateDataFilter:
+      output: ". += { timer: { triggered: .timer.triggered, startTime: .timer.startTime, elapsedSeconds: now() - .timer.startTime }}"
   - name: TicketDone
     type: switch
     dataConditions:
@@ -99,9 +83,6 @@ states:
           refName: "logInfo"
           arguments:
             message: "\"Escalate is \\(.)\""
-      - name: "stopTimer"
-        functionRef:
-          refName: "stopTimer"
       - name: "sendEmail"
         functionRef:
           refName: "sendEmail"
@@ -109,6 +90,8 @@ states:
             ticketId: .ticket.id
             email: .manager
     transition: GetJiraIssue
+    stateDataFilter:
+      output: ". += { timer: { triggered: true, startTime: .timer.startTime, elapsedSeconds: 0 }}"
   - name: Greetings
     type: operation
     actions:
