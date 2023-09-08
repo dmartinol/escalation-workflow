@@ -43,8 +43,10 @@ public class EmailService {
         prop.put("mail.smtp.port", smtpPort);
     }
 
-    public void sendEmail(String ticketId, String email) {
-        logger.info("Sending email for ticket {} to {}", ticketId, email);
+    public void sendEmail(String ticketId, String ticketNumber, String email) {
+        String baseTicketUrl = ticketId.substring(0, ticketId.indexOf("/rest"));
+        baseTicketUrl += "/browse/" + ticketNumber;
+        logger.info("Sending email for ticket {} to {}", baseTicketUrl, email);
 
         Session session = Session.getInstance(prop, new Authenticator() {
             @Override
@@ -57,9 +59,9 @@ public class EmailService {
             message.setFrom(new InternetAddress("test@gmail.com"));
             message.setRecipients(
                     Message.RecipientType.TO, InternetAddress.parse(email));
-            message.setSubject("Mail Subject");
+            message.setSubject("[Red Hat Parados] Workflow Notification");
 
-            String msg = String.format("Hey, you must review ticket %s", ticketId);
+            String msg = String.format("Hey, you must review ticket %s", baseTicketUrl);
 
             MimeBodyPart mimeBodyPart = new MimeBodyPart();
             mimeBodyPart.setContent(msg, "text/html; charset=utf-8");

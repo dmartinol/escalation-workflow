@@ -7,15 +7,17 @@ version: 0.0.1
 timeouts:
   workflowExecTimeout: PT24H
 start: CreateJiraIssue
-# dataInputSchema: ocpob-schema.json
+dataInputSchema: ocp-onboarding-schema.json
 functions:
-  - name: sendEmail 
+  - name: sendEmail
     type: custom 
     operation: service:java:com.redhat.appeng.escalation.EmailService::sendEmail
   - name: getJiraIssue
-    operation: specs/jira.yaml#getIssue
+    operation: specs/jira.yml#getIssue
   - name: createJiraIssue
-    operation: specs/jira.yaml#createIssue
+    operation: specs/jira.yml#createIssue
+  - name: createK8sNamespace
+    operation: specs/kube.yaml#createCoreV1Namespace
   - name: logInfo
     type: custom
     operation: "sysout:INFO"
@@ -27,26 +29,28 @@ states:
       - functionRef:
           refName: createJiraIssue
           arguments:
-            title: '"Request For New Namespace: " + .namespace'
+            update: {}
+            fields:
+              summary: '"Request For New Namespace: " + .namespace'
+              issuetype:
+                id: "10001"
+              project:
+                key: "PAR"
         actionDataFilter:
-          toStateData: .ticket
+          toStateData: .jiraIssue
     stateDataFilter:
       output: ". += { timer: { triggered: false, startTime: now(), elapsedSeconds: 0 }}"
     transition: GetJiraIssue
   - name: GetJiraIssue
     type: operation
     actions:
-      - name: "printAction"
-        functionRef:
-          refName: "logInfo"
-          arguments:
-            message: "\"GetJiraIssue is \\(.)\""
       - functionRef:
           refName: getJiraIssue
           arguments:
-            id: .ticket.id
+            issueIdOrKey: .jiraIssue.key
+            fields: status
         actionDataFilter:
-          toStateData: .ticket
+          toStateData: .jiraIssue
         sleep:
           before: PT6S
     transition: GetJiraIssueResult
@@ -64,14 +68,14 @@ states:
   - name: TicketDone
     type: switch
     dataConditions:
-      - condition: (.ticket.status != "Approved" and .timer.triggered == false and .timer.elapsedSeconds > 10)
+      - condition: (.jiraIssue.fields.status.name == "Done" and .jiraIssue.fields.status.statusCategory.name == "Done")
+        transition:
+          nextState: CreateK8sNamespace
+      - condition: (.jiraIssue.fields.status.name != "Done" and .timer.triggered == false and .timer.elapsedSeconds > 60)
         transition:
           nextState: Escalate
-      - condition: (.ticket.status != "Approved")
-        transition:
-          nextState: GetJiraIssue
     defaultCondition:
-      transition: Greetings
+      transition: GetJiraIssue
   - name: Escalate
     type: operation
     actions:
@@ -84,18 +88,24 @@ states:
         functionRef:
           refName: "sendEmail"
           arguments:
-            ticketId: .ticket.id
+            ticketId: .jiraIssue.self
+            ticketNumber: .jiraIssue.key
             email: .manager
     transition: GetJiraIssue
     stateDataFilter:
       output: ". += { timer: { triggered: true, startTime: .timer.startTime, elapsedSeconds: 0 }}"
-  - name: Greetings
+  - name: CreateK8sNamespace
     type: operation
     actions:
-      - name: "printAction"
-        functionRef:
-          refName: "logInfo"
+      - functionRef:
+          refName: createK8sNamespace
           arguments:
-            message: "\"Greetings is \\(.)\""
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: ".namespace"
+        actionDataFilter:
+          toStateData: .createdNamespace
+    stateDataFilter:
+      output: "{createdNamespace: .createdNamespace}"
     end: true
-
