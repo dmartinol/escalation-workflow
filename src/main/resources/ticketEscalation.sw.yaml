@@ -10,12 +10,11 @@ start: CreateJiraIssue
 dataInputSchema: ocp-onboarding-schema.json
 functions:
   - name: sendEmail
-    type: custom 
-    operation: service:java:com.redhat.appeng.escalation.EmailService::sendEmail
+    operation: 'specs/mailtrap.yaml#sendEmail'
   - name: getJiraIssue
-    operation: specs/jira.yml#getIssue
+    operation: specs/jira.yaml#getIssue
   - name: createJiraIssue
-    operation: specs/jira.yml#createIssue
+    operation: specs/jira.yaml#createIssue
   - name: createK8sNamespace
     operation: specs/kube.yaml#createCoreV1Namespace
   - name: logInfo
@@ -35,9 +34,19 @@ states:
               issuetype:
                 id: "10001"
               project:
-                key: "PAR"
+                key: "TEST"
         actionDataFilter:
           toStateData: .jiraIssue
+    transition: InitJiraBrowser
+  - name: InitJiraBrowser
+    type: operation
+    actions: []
+    transition: InitTimer
+    stateDataFilter:
+      output: ". += { jiraBrowser: ((.jiraIssue.self  | sub(\"rest/.*\"; \"browse/\")) + .jiraIssue.key) }"
+  - name: InitTimer
+    type: operation
+    actions: []
     stateDataFilter:
       output: ". += { timer: { triggered: false, startTime: now(), elapsedSeconds: 0 }}"
     transition: GetJiraIssue
@@ -68,10 +77,10 @@ states:
   - name: TicketDone
     type: switch
     dataConditions:
-      - condition: (.jiraIssue.fields.status.name == "Done" and .jiraIssue.fields.status.statusCategory.name == "Done")
+      - condition: (.jiraIssue.fields.status.statusCategory.key == "done")
         transition:
           nextState: CreateK8sNamespace
-      - condition: (.jiraIssue.fields.status.name != "Done" and .timer.triggered == false and .timer.elapsedSeconds > 60)
+      - condition: (.jiraIssue.fields.status.statusCategory.key != "done" and .timer.triggered == false and .timer.elapsedSeconds > 60)
         transition:
           nextState: Escalate
     defaultCondition:
@@ -86,11 +95,17 @@ states:
             message: "\"Escalate is \\(.)\""
       - name: "sendEmail"
         functionRef:
-          refName: "sendEmail"
+          refName: sendEmail
           arguments:
-            ticketId: .jiraIssue.self
-            ticketNumber: .jiraIssue.key
-            email: .manager
+            inbox_id: 2403453
+            to: 
+              - email: .manager
+                name: "Escalation Manager"
+            from:
+              email: escalation@gmail.com
+              name: "Escalation service"
+            subject: " \"Escalation ticket \" + .jiraIssue.key "
+            html: '"Please manage escalation ticket <a href=\"" + .jiraBrowser + "\">" + .jiraIssue.key + "</a>"'
     transition: GetJiraIssue
     stateDataFilter:
       output: ". += { timer: { triggered: true, startTime: .timer.startTime, elapsedSeconds: 0 }}"
