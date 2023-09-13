@@ -58,13 +58,16 @@ states:
 ...
 ```
 
-The sender email is hardcoded in:
+The sender email and inbox ID are hardcoded in:
 ```yaml
 states:
 ...
   - name: Escalate
 ...
       - name: "sendEmail"
+...
+          arguments:
+            inbox_id: 2403453
 ...
             from:
               email: escalation@gmail.com
